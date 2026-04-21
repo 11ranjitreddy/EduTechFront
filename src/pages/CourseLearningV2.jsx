@@ -358,7 +358,7 @@ const CourseLearningV2 = () => {
                     <TabbedContent
     lessons={allLessons}
     assignments={[]}
-    discussions={[]}
+    //discussions={[]}
     resources={[]}
     certificateProgress={courseProgress}
     currentLessonIndex={0}

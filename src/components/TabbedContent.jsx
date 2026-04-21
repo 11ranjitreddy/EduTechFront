@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import './TabbedContent.css';
 
 const ASSESSMENT_URL = 'http://localhost:8082/api/v1/assessments';
+const DISCUSSION_URL = 'http://localhost:8082/api/v1/discussions';
 
 const TabbedContent = ({
     lessons = [],
     assignments = [],
-    discussions = [],
+    //discussions = [],
     resources = [],
     certificateProgress = 0,
     currentLessonIndex = 0,
@@ -27,6 +28,138 @@ const TabbedContent = ({
     const [result, setResult] = useState(null);
     const [previousAttempt, setPreviousAttempt] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+
+
+    // ✅ Discussion states
+const [discussions, setDiscussions] = useState([]);
+const [discussionLoading, setDiscussionLoading]
+    = useState(false);
+const [newQuestion, setNewQuestion] = useState('');
+const [newQuestionBody, setNewQuestionBody] = useState('');
+const [postingQuestion, setPostingQuestion] = useState(false);
+const [selectedDiscussion, setSelectedDiscussion]
+    = useState(null);
+const [replies, setReplies] = useState([]);
+const [newReply, setNewReply] = useState('');
+const [postingReply, setPostingReply] = useState(false);
+const [showQuestionForm, setShowQuestionForm] = useState(false);
+
+
+// ✅ Fetch discussions when tab clicked
+useEffect(() => {
+    if (activeTab === 'discussions' && courseId) {
+        fetchDiscussions();
+    }
+}, [activeTab, courseId]);
+
+const fetchDiscussions = async () => {
+    setDiscussionLoading(true);
+    try {
+        const res = await fetch(
+            `${DISCUSSION_URL}/course/${courseId}`);
+        if (res.ok) {
+            const data = await res.json();
+            setDiscussions(Array.isArray(data) ? data : []);
+        }
+    } catch (err) {
+        console.error('Failed to fetch discussions:', err);
+    } finally {
+        setDiscussionLoading(false);
+    }
+};
+
+const fetchReplies = async (discussionId) => {
+    try {
+        const res = await fetch(
+            `${DISCUSSION_URL}/${discussionId}/replies`);
+        if (res.ok) {
+            const data = await res.json();
+            setReplies(Array.isArray(data) ? data : []);
+        }
+    } catch (err) {
+        console.error('Failed to fetch replies:', err);
+    }
+};
+
+const handlePostQuestion = async () => {
+    if (!newQuestion.trim()) return;
+    setPostingQuestion(true);
+    try {
+        const res = await fetch(DISCUSSION_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user?.accessToken}`
+            },
+            body: JSON.stringify({
+                courseId: courseId,
+                studentEmail: user?.email,
+                studentName: user?.name || user?.email,
+                title: newQuestion,
+                body: newQuestionBody
+            })
+        });
+        if (res.ok) {
+            setNewQuestion('');
+            setNewQuestionBody('');
+            setShowQuestionForm(false);
+            fetchDiscussions();
+        }
+    } catch (err) {
+        console.error('Failed to post question:', err);
+    } finally {
+        setPostingQuestion(false);
+    }
+};
+
+const handleSelectDiscussion = (discussion) => {
+    setSelectedDiscussion(discussion);
+    setReplies([]);
+    fetchReplies(discussion.id);
+};
+
+const handlePostReply = async () => {
+    if (!newReply.trim() || !selectedDiscussion) return;
+    setPostingReply(true);
+    try {
+        const res = await fetch(
+            `${DISCUSSION_URL}/${selectedDiscussion.id}/replies`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user?.accessToken}`
+                },
+                body: JSON.stringify({
+                    senderEmail: user?.email,
+                    senderName: user?.name || user?.email,
+                    senderRole: user?.role || 'STUDENT',
+                    body: newReply
+                })
+            }
+        );
+        if (res.ok) {
+            setNewReply('');
+            fetchReplies(selectedDiscussion.id);
+            fetchDiscussions();
+        }
+    } catch (err) {
+        console.error('Failed to post reply:', err);
+    } finally {
+        setPostingReply(false);
+    }
+};
+
+const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+};
 
     // ✅ Fetch assessment when Assignments tab clicked
     useEffect(() => {
@@ -129,12 +262,12 @@ const TabbedContent = ({
     };
 
     const tabs = [
-        { id: 'lessons', label: 'Lessons', icon: BookOpen, count: lessons.length },
-        { id: 'assignments', label: 'Assignments', icon: FileText, count: assessment?.questions?.length || 0 },
-        { id: 'discussions', label: 'Discussions', icon: MessageSquare, count: discussions.length },
-        { id: 'resources', label: 'Resources', icon: FolderOpen, count: resources.length },
-        { id: 'certificate', label: 'Certificate', icon: Award }
-    ];
+    { id: 'lessons', label: 'Lessons', icon: BookOpen, count: lessons.length },
+    { id: 'assignments', label: 'Assignments', icon: FileText, count: assessment?.questions?.length || 0 },
+    { id: 'discussions', label: 'Discussions', icon: MessageSquare, count: discussions.length }, // ✅ live count
+    { id: 'resources', label: 'Resources', icon: FolderOpen, count: resources.length },
+    { id: 'certificate', label: 'Certificate', icon: Award }
+];
 
     return (
         <div className="tabbed-content">
@@ -552,28 +685,411 @@ const TabbedContent = ({
         )}
     </div>
 )}
-                {/* ── Discussions Tab ── */}
-                {activeTab === 'discussions' && (
-                    <div className="discussions-list">
-                        {discussions.length > 0 ? discussions.map(discussion => (
-                            <div key={discussion.id} className="discussion-item">
-                                <img src={discussion.avatar} alt="" className="discussion-avatar" />
-                                <div className="discussion-info">
-                                    <h4>{discussion.title}</h4>
-                                    <p>by {discussion.author} • {discussion.replies} replies</p>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="empty-state">
-                                <MessageSquare size={40} />
-                                <p>No discussions yet</p>
-                                <button className="btn btn-primary btn-sm">
-                                    Start a Discussion
-                                </button>
-                            </div>
-                        )}
+               {/* ── Discussions Tab ── */}
+{activeTab === 'discussions' && (
+    <div style={{ padding: '1rem' }}>
+        {!selectedDiscussion ? (
+            // ── Questions List ──
+            <div>
+                {/* Post Question Button */}
+                {!showQuestionForm ? (
+                    <button
+                        onClick={() => setShowQuestionForm(true)}
+                        style={{
+                            width: '100%', padding: '0.75rem',
+                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                            color: 'white', border: 'none',
+                            borderRadius: '10px', cursor: 'pointer',
+                            fontWeight: '700', fontSize: '0.95rem',
+                            marginBottom: '1rem'
+                        }}
+                    >
+                        💬 Ask a Question
+                    </button>
+                ) : (
+                    // Question Form
+                    <div style={{
+                        background: '#F8FAFC',
+                        border: '2px solid #4F46E5',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1rem'
+                    }}>
+                        <h4 style={{
+                            margin: '0 0 0.75rem',
+                            color: '#4F46E5',
+                            fontSize: '0.95rem'
+                        }}>
+                            💬 Post Your Question
+                        </h4>
+                        <input
+                            type="text"
+                            placeholder="Question title (e.g. How does JWT work?)"
+                            value={newQuestion}
+                            onChange={(e) =>
+                                setNewQuestion(e.target.value)}
+                            style={{
+                                width: '100%', padding: '0.6rem',
+                                border: '1.5px solid #E5E7EB',
+                                borderRadius: '8px', fontSize: '0.875rem',
+                                marginBottom: '0.5rem',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                        <textarea
+                            placeholder="Describe your doubt in detail..."
+                            value={newQuestionBody}
+                            onChange={(e) =>
+                                setNewQuestionBody(e.target.value)}
+                            rows={3}
+                            style={{
+                                width: '100%', padding: '0.6rem',
+                                border: '1.5px solid #E5E7EB',
+                                borderRadius: '8px', fontSize: '0.875rem',
+                                resize: 'vertical', marginBottom: '0.75rem',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                        <div style={{
+                            display: 'flex', gap: '0.5rem'
+                        }}>
+                            <button
+                                onClick={() => {
+                                    setShowQuestionForm(false);
+                                    setNewQuestion('');
+                                    setNewQuestionBody('');
+                                }}
+                                style={{
+                                    flex: 1, padding: '0.6rem',
+                                    background: 'white',
+                                    border: '1.5px solid #E5E7EB',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    fontSize: '0.85rem'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handlePostQuestion}
+                                disabled={postingQuestion ||
+                                    !newQuestion.trim()}
+                                style={{
+                                    flex: 2, padding: '0.6rem',
+                                    background: postingQuestion
+                                        ? '#9CA3AF' : '#4F46E5',
+                                    color: 'white', border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: postingQuestion
+                                        ? 'not-allowed' : 'pointer',
+                                    fontWeight: '700',
+                                    fontSize: '0.85rem'
+                                }}
+                            >
+                                {postingQuestion
+                                    ? '⏳ Posting...'
+                                    : '📤 Post Question'}
+                            </button>
+                        </div>
                     </div>
                 )}
+
+                {/* Discussions List */}
+                {discussionLoading ? (
+                    <div style={{
+                        textAlign: 'center',
+                        padding: '2rem',
+                        color: '#6B7280',
+                        fontSize: '0.9rem'
+                    }}>
+                        Loading discussions...
+                    </div>
+                ) : discussions.length === 0 ? (
+                    <div style={{
+                        textAlign: 'center',
+                        padding: '2rem',
+                        color: '#9CA3AF'
+                    }}>
+                        <div style={{
+                            fontSize: '2rem',
+                            marginBottom: '0.5rem'
+                        }}>
+                            💬
+                        </div>
+                        <p style={{ margin: 0 }}>
+                            No questions yet. Be the first to ask!
+                        </p>
+                    </div>
+                ) : (
+                    discussions.map(discussion => (
+                        <div
+                            key={discussion.id}
+                            onClick={() =>
+                                handleSelectDiscussion(discussion)}
+                            style={{
+                                padding: '0.875rem',
+                                background: 'white',
+                                borderRadius: '10px',
+                                border: '1.5px solid #E5E7EB',
+                                marginBottom: '0.625rem',
+                                cursor: 'pointer',
+                                transition: 'border 0.15s',
+                            }}
+                            onMouseEnter={e =>
+                                e.currentTarget.style.borderColor
+                                    = '#4F46E5'}
+                            onMouseLeave={e =>
+                                e.currentTarget.style.borderColor
+                                    = '#E5E7EB'}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                marginBottom: '0.3rem'
+                            }}>
+                                <p style={{
+                                    margin: 0,
+                                    fontWeight: '600',
+                                    color: '#1F2937',
+                                    fontSize: '0.875rem',
+                                    flex: 1,
+                                    paddingRight: '0.5rem'
+                                }}>
+                                    💬 {discussion.title}
+                                </p>
+                                <span style={{
+                                    background: '#EEF2FF',
+                                    color: '#4F46E5',
+                                    borderRadius: '99px',
+                                    padding: '0.1rem 0.5rem',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '600',
+                                    flexShrink: 0
+                                }}>
+                                    {discussion.replyCount} 💬
+                                </span>
+                            </div>
+                            {discussion.body && (
+                                <p style={{
+                                    margin: '0 0 0.3rem',
+                                    fontSize: '0.78rem',
+                                    color: '#6B7280',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    {discussion.body}
+                                </p>
+                            )}
+                            <div style={{
+                                fontSize: '0.72rem',
+                                color: '#9CA3AF'
+                            }}>
+                                by {discussion.studentName}
+                                {' • '}
+                                {formatTime(discussion.createdAt)}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        ) : (
+            // ── Reply Thread ──
+            <div>
+                {/* Back Button */}
+                <button
+                    onClick={() => {
+                        setSelectedDiscussion(null);
+                        setReplies([]);
+                    }}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#4F46E5',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.85rem',
+                        padding: '0 0 0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                    }}
+                >
+                    ← Back to Questions
+                </button>
+
+                {/* Question */}
+                <div style={{
+                    padding: '1rem',
+                    background: '#EEF2FF',
+                    borderRadius: '10px',
+                    border: '1px solid #C7D2FE',
+                    marginBottom: '1rem'
+                }}>
+                    <p style={{
+                        margin: '0 0 0.25rem',
+                        fontWeight: '700',
+                        color: '#1F2937',
+                        fontSize: '0.9rem'
+                    }}>
+                        💬 {selectedDiscussion.title}
+                    </p>
+                    {selectedDiscussion.body && (
+                        <p style={{
+                            margin: '0 0 0.5rem',
+                            fontSize: '0.82rem',
+                            color: '#374151'
+                        }}>
+                            {selectedDiscussion.body}
+                        </p>
+                    )}
+                    <div style={{
+                        fontSize: '0.72rem',
+                        color: '#6B7280'
+                    }}>
+                        by {selectedDiscussion.studentName}
+                        {' • '}
+                        {formatTime(selectedDiscussion.createdAt)}
+                    </div>
+                </div>
+
+                {/* Replies */}
+                <div style={{ marginBottom: '1rem' }}>
+                    {replies.length === 0 ? (
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '1.5rem',
+                            color: '#9CA3AF',
+                            fontSize: '0.85rem'
+                        }}>
+                            No replies yet. Be the first to answer!
+                        </div>
+                    ) : (
+                        replies.map(reply => (
+                            <div key={reply.id} style={{
+                                padding: '0.75rem',
+                                background: reply.senderRole === 'ADMIN'
+                                    ? '#F0FDF4' : 'white',
+                                borderRadius: '8px',
+                                border: `1px solid ${reply.senderRole === 'ADMIN' ? '#86EFAC' : '#E5E7EB'}`,
+                                marginBottom: '0.5rem'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    marginBottom: '0.3rem'
+                                }}>
+                                    <div style={{
+                                        width: '28px',
+                                        height: '28px',
+                                        borderRadius: '50%',
+                                        background: reply.senderRole
+                                            === 'ADMIN'
+                                            ? '#10B981' : '#4F46E5',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontWeight: '700',
+                                        fontSize: '0.75rem',
+                                        flexShrink: 0
+                                    }}>
+                                        {reply.senderName?.charAt(0)
+                                            .toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <span style={{
+                                            fontWeight: '600',
+                                            fontSize: '0.8rem',
+                                            color: '#1F2937'
+                                        }}>
+                                            {reply.senderName}
+                                        </span>
+                                        {reply.senderRole === 'ADMIN' && (
+                                            <span style={{
+                                                marginLeft: '0.4rem',
+                                                background: '#10B981',
+                                                color: 'white',
+                                                borderRadius: '4px',
+                                                padding: '0.1rem 0.4rem',
+                                                fontSize: '0.65rem',
+                                                fontWeight: '700'
+                                            }}>
+                                                👑 Admin
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        color: '#9CA3AF',
+                                        marginLeft: 'auto'
+                                    }}>
+                                        {formatTime(reply.createdAt)}
+                                    </span>
+                                </div>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '0.82rem',
+                                    color: '#374151',
+                                    lineHeight: '1.5'
+                                }}>
+                                    {reply.body}
+                                </p>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Reply Input */}
+                <div style={{
+                    background: '#F8FAFC',
+                    border: '1.5px solid #E5E7EB',
+                    borderRadius: '10px',
+                    padding: '0.75rem'
+                }}>
+                    <textarea
+                        placeholder="Write your answer..."
+                        value={newReply}
+                        onChange={(e) => setNewReply(e.target.value)}
+                        rows={3}
+                        style={{
+                            width: '100%', padding: '0.6rem',
+                            border: '1.5px solid #E5E7EB',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            resize: 'vertical',
+                            marginBottom: '0.5rem',
+                            boxSizing: 'border-box'
+                        }}
+                    />
+                    <button
+                        onClick={handlePostReply}
+                        disabled={postingReply || !newReply.trim()}
+                        style={{
+                            width: '100%', padding: '0.7rem',
+                            background: postingReply || !newReply.trim()
+                                ? '#9CA3AF'
+                                : 'linear-gradient(135deg, #10B981, #059669)',
+                            color: 'white', border: 'none',
+                            borderRadius: '8px',
+                            cursor: postingReply || !newReply.trim()
+                                ? 'not-allowed' : 'pointer',
+                            fontWeight: '700',
+                            fontSize: '0.875rem'
+                        }}
+                    >
+                        {postingReply
+                            ? '⏳ Posting...'
+                            : '✅ Post Answer'}
+                    </button>
+                </div>
+            </div>
+        )}
+    </div>
+)}
 
                 {/* ── Resources Tab ── */}
                 {activeTab === 'resources' && (
