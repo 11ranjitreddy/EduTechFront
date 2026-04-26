@@ -4,7 +4,7 @@ import Button from '../components/Button';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import './Auth.css';
 
-const BASE_URL = 'http://localhost:8081/api/v1/auth';
+import { AUTH_URL as BASE_URL } from '../config/api';
 
 const Register = () => {
     const [step, setStep] = useState(1);

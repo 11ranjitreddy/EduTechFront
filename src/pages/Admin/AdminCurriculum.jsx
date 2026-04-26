@@ -3,10 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './AdminCurriculum.css';
 
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
-const SECTION_URL = 'http://localhost:8082/api/v1/sections';
-const VIDEO_URL = 'http://localhost:8082/api/v1/videos';
-const ASSESSMENT_URL = 'http://localhost:8082/api/v1/assessments';
+import { COURSE_URL, SECTION_URL, VIDEO_URL, ASSESSMENT_URL } from '../../config/api';
 
 // ✅ IMPROVED: Better token retrieval with multiple fallback options
 const getToken = () => {

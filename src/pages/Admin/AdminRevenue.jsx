@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './AdminRevenue.css';
 
-const PAYMENT_URL = 'http://localhost:8082/api/v1/payments';
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
+import { PAYMENT_URL, COURSE_URL } from '../../config/api';
 
 const AdminRevenue = () => {
     const { user } = useAuth();

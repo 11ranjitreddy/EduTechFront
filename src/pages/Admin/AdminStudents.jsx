@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './AdminStudents.css';
 
-const AUTH_URL = 'http://localhost:8081/api/v1/auth';
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
+import { AUTH_URL, ENROLLMENT_URL } from '../../config/api';
 
 const AdminStudents = () => {
     const { user } = useAuth();

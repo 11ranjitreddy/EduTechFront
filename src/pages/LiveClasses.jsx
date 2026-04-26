@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './LiveClasses.css';
 
-const LIVECLASS_URL = 'http://localhost:8082/api/v1/liveclasses';
+import { LIVECLASS_URL } from '../config/api';
 
 const LiveClasses = () => {
     const { isAuthenticated } = useAuth();

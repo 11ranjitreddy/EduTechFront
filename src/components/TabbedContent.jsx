@@ -3,8 +3,7 @@ import { BookOpen, FileText, MessageSquare, FolderOpen, Award } from 'lucide-rea
 import { useAuth } from '../context/AuthContext';
 import './TabbedContent.css';
 
-const ASSESSMENT_URL = 'http://localhost:8082/api/v1/assessments';
-const DISCUSSION_URL = 'http://localhost:8082/api/v1/discussions';
+import { ASSESSMENT_URL, DISCUSSION_URL } from '../config/api';
 
 const TabbedContent = ({
     lessons = [],

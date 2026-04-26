@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import './AdminCourses.css';
 import { useNavigate } from 'react-router-dom';
 
-const BASE_URL = 'http://localhost:8082/api/v1/courses';
+import { COURSE_URL as BASE_URL } from '../../config/api';
 
 const emptyForm = {
     title: '', description: '', instructor: '',

@@ -84,7 +84,7 @@ const Navbar = () => {
             <Link to="/courses" className="nav-link">Courses</Link>
             
             {/* LIVE CLASS - HIGHLIGHTED */}
-            <Link to="/live-class" className="nav-link live-class-link">
+            <Link to="/live-classes" className="nav-link live-class-link">
               Live Class
               <span className="live-badge">LIVE</span>
               <span className="live-dot"></span>

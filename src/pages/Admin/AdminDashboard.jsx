@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './AdminDashboard.css';
 
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
-const AUTH_URL = 'http://localhost:8081/api/v1/auth';
-const LIVECLASS_URL = 'http://localhost:8082/api/v1/liveclasses';
+import { COURSE_URL, AUTH_URL, LIVECLASS_URL, CONTACT_URL } from '../../config/api';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -14,6 +12,7 @@ const AdminDashboard = () => {
     });
     const [topCourses, setTopCourses] = useState([]);
     const [liveClasses, setLiveClasses] = useState([]);
+    const [contacts, setContacts] = useState([]); // ✅ Added contacts state
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -24,6 +23,7 @@ const AdminDashboard = () => {
     useEffect(() => {
         fetchStats();
         fetchLiveClasses();
+        fetchContacts(); // ✅ Added contacts fetch
     }, [user]);
 
     const getToken = () => user?.accessToken;
@@ -66,20 +66,57 @@ const AdminDashboard = () => {
             .catch(err => console.error(err));
     };
 
+    // ✅ Added fetchContacts function
+    const fetchContacts = () => {
+        const token = getToken();
+        fetch(`${CONTACT_URL}/admin/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => setContacts(Array.isArray(data) ? data : []))
+            .catch(err => console.error(err));
+    };
+
+    // ✅ Added handleContactStatus function
+    const handleContactStatus = async (id, status) => {
+        try {
+            const token = getToken();
+            await fetch(`${CONTACT_URL}/${id}/status?status=${status}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            fetchContacts();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleSchedule = async (e) => {
         e.preventDefault();
         if (!form.title || !form.meetLink || !form.scheduledAt) return;
         setSaving(true);
+
+        console.log('FORM DATA BEING SENT:', JSON.stringify(form));
+        console.log('scheduledAt value:', form.scheduledAt);
+        console.log('scheduledAt length:', form.scheduledAt?.length);
+
         try {
             const token = getToken();
-            await fetch(LIVECLASS_URL, {
+            const res = await fetch(LIVECLASS_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(form)
+                body: JSON.stringify({
+                    ...form,
+                    status: 'HOLD'
+                })
             });
+            console.log('Response status:', res.status);
+            const data = await res.json();
+            console.log('Response data:', data);
+
             setForm({
                 title: '', description: '', instructor: '',
                 meetLink: '', courseId: '', scheduledAt: ''
@@ -304,12 +341,15 @@ const AdminDashboard = () => {
                                             padding: '0.2rem 0.5rem', borderRadius: '9999px',
                                             fontSize: '0.7rem', fontWeight: '600',
                                             background: cls.status === 'LIVE' ? '#DCFCE7' :
-                                                cls.status === 'COMPLETED' ? '#F1F5F9' : '#EEF2FF',
+                                                cls.status === 'COMPLETED' ? '#F1F5F9' :
+                                                cls.status === 'HOLD' ? '#FEF3C7' : '#EEF2FF',
                                             color: cls.status === 'LIVE' ? '#166534' :
-                                                cls.status === 'COMPLETED' ? '#475569' : '#4F46E5'
+                                                cls.status === 'COMPLETED' ? '#475569' :
+                                                cls.status === 'HOLD' ? '#92400E' : '#4F46E5'
                                         }}>
                                             {cls.status === 'LIVE' ? '🔴 LIVE' :
-                                             cls.status === 'COMPLETED' ? '✅ Completed' : '📅 Upcoming'}
+                                             cls.status === 'COMPLETED' ? '✅ Completed' :
+                                             cls.status === 'HOLD' ? '⏸️ On Hold' : '📅 Upcoming'}
                                         </span>
                                     </div>
                                     {cls.description && (
@@ -322,14 +362,34 @@ const AdminDashboard = () => {
                                         {cls.instructor && <span>👤 {cls.instructor}</span>}
                                     </div>
                                 </div>
+
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
-                                    {cls.status === 'UPCOMING' && (
-                                        <button onClick={() => handleStatusChange(cls.id, 'LIVE')} style={{
-                                            padding: '0.4rem 0.75rem', background: '#DCFCE7',
-                                            color: '#166534', border: 'none', borderRadius: '6px',
+                                    {cls.status === 'HOLD' && (
+                                        <button onClick={() => {
+                                            window.open(cls.meetLink, '_blank');
+                                            handleStatusChange(cls.id, 'UPCOMING');
+                                        }} style={{
+                                            padding: '0.4rem 0.75rem', background: '#EEF2FF',
+                                            color: '#4F46E5', border: 'none', borderRadius: '6px',
                                             cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
-                                        }}>🔴 Go Live</button>
+                                        }}>▶️ Start</button>
                                     )}
+
+                                    {cls.status === 'UPCOMING' && (
+                                        <>
+                                            <button onClick={() => handleStatusChange(cls.id, 'HOLD')} style={{
+                                                padding: '0.4rem 0.75rem', background: '#FEF3C7',
+                                                color: '#92400E', border: 'none', borderRadius: '6px',
+                                                cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
+                                            }}>⏸️ Hold</button>
+                                            <button onClick={() => handleStatusChange(cls.id, 'LIVE')} style={{
+                                                padding: '0.4rem 0.75rem', background: '#DCFCE7',
+                                                color: '#166534', border: 'none', borderRadius: '6px',
+                                                cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
+                                            }}>🔴 Go Live</button>
+                                        </>
+                                    )}
+
                                     {cls.status === 'LIVE' && (
                                         <button onClick={() => handleStatusChange(cls.id, 'COMPLETED')} style={{
                                             padding: '0.4rem 0.75rem', background: '#F1F5F9',
@@ -337,15 +397,113 @@ const AdminDashboard = () => {
                                             cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
                                         }}>✅ End Class</button>
                                     )}
+
                                     <a href={cls.meetLink} target="_blank" rel="noreferrer" style={{
                                         padding: '0.4rem 0.75rem', background: '#4F46E5',
                                         color: 'white', borderRadius: '6px',
                                         textDecoration: 'none', fontWeight: '600', fontSize: '0.8rem'
                                     }}>🔗 Open Link</a>
+
                                     <button onClick={() => handleDelete(cls.id)} style={{
                                         padding: '0.4rem', background: 'none',
                                         border: 'none', cursor: 'pointer', fontSize: '1rem'
                                     }}>🗑️</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ✅ Support Tickets Section */}
+            <div className="card" style={{ marginTop: '2rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ margin: 0 }}>📩 Support Tickets</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: '#6B7280', fontSize: '0.9rem' }}>
+                        Student contact requests
+                    </p>
+                </div>
+
+                {contacts.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: '#9CA3AF' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                        <p>No support tickets yet</p>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {contacts.map(ct => (
+                            <div key={ct.id} style={{
+                                padding: '1.25rem', background: '#F8FAFC',
+                                borderRadius: '10px', border: '1px solid #E5E7EB'
+                            }}>
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between',
+                                    alignItems: 'flex-start', gap: '1rem'
+                                }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center',
+                                            gap: '0.75rem', marginBottom: '0.5rem'
+                                        }}>
+                                            <span style={{ fontSize: '1.2rem' }}>🎫</span>
+                                            <h4 style={{ margin: 0 }}>{ct.subject}</h4>
+                                            <span style={{
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '9999px',
+                                                fontSize: '0.7rem', fontWeight: '600',
+                                                background: ct.status === 'RESOLVED' ? '#DCFCE7' :
+                                                    ct.status === 'IN_PROGRESS' ? '#FEF3C7' : '#EEF2FF',
+                                                color: ct.status === 'RESOLVED' ? '#166534' :
+                                                    ct.status === 'IN_PROGRESS' ? '#92400E' : '#4F46E5'
+                                            }}>
+                                                {ct.status === 'RESOLVED' ? '✅ Resolved' :
+                                                 ct.status === 'IN_PROGRESS' ? '🔄 In Progress' : '🆕 Open'}
+                                            </span>
+                                        </div>
+                                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                                            {ct.message}
+                                        </p>
+                                        <div style={{ fontSize: '0.8rem', color: '#9CA3AF' }}>
+                                            <span>📧 {ct.studentEmail}</span>
+                                            <span style={{ marginLeft: '1rem' }}>
+                                                🕐 {new Date(ct.createdAt).toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        display: 'flex', gap: '0.5rem',
+                                        flexShrink: 0, flexDirection: 'column'
+                                    }}>
+                                        {ct.status === 'OPEN' && (
+                                            <button onClick={() => handleContactStatus(ct.id, 'IN_PROGRESS')}
+                                                style={{
+                                                    padding: '0.4rem 0.75rem', background: '#FEF3C7',
+                                                    color: '#92400E', border: 'none', borderRadius: '6px',
+                                                    cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
+                                                }}>
+                                                🔄 In Progress
+                                            </button>
+                                        )}
+                                        {ct.status === 'IN_PROGRESS' && (
+                                            <button onClick={() => handleContactStatus(ct.id, 'RESOLVED')}
+                                                style={{
+                                                    padding: '0.4rem 0.75rem', background: '#DCFCE7',
+                                                    color: '#166534', border: 'none', borderRadius: '6px',
+                                                    cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
+                                                }}>
+                                                ✅ Resolve
+                                            </button>
+                                        )}
+                                        <button onClick={() => handleContactStatus(ct.id, 'OPEN')}
+                                            style={{
+                                                padding: '0.4rem 0.75rem', background: '#EEF2FF',
+                                                color: '#4F46E5', border: 'none', borderRadius: '6px',
+                                                cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem'
+                                            }}>
+                                            🔁 Reopen
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}

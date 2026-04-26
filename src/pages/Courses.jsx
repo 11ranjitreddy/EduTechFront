@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import CourseCard from '../components/CourseCard';
 import './Courses.css';
 
-const BASE_URL = 'http://localhost:8082/api/v1/courses';
+import { COURSE_URL as BASE_URL } from '../config/api';
 
 const categoryMap = {
     'all': 'All',

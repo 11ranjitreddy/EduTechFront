@@ -4,9 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import './Profile.css';
 
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
-const PAYMENT_URL = 'http://localhost:8082/api/v1/payments';
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
+import { ENROLLMENT_URL, PAYMENT_URL, COURSE_URL } from '../config/api';
 
 const Profile = () => {
     const { user, logout } = useAuth();
@@ -49,14 +47,16 @@ const Profile = () => {
 
             // ✅ Fetch course details with token
             if (Array.isArray(enrollData) && enrollData.length > 0) {
-                const courseDetails = await Promise.all(
-                    enrollData.map(e =>
-                        fetch(`${COURSE_URL}/${e.courseId}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        }).then(r => r.json())
-                    )
-                );
-                setCourses(courseDetails);
+             const courseDetails = await Promise.all(
+    enrollData.map(e =>
+        fetch(`${COURSE_URL}/${e.courseId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r => r.ok ? r.json() : null) // ✅ return null if 500
+        .catch(() => null)                  // ✅ return null if network error
+    )
+);
+setCourses(courseDetails.filter(Boolean));
             }
         } catch (err) {
             console.error('Failed to load profile data:', err);

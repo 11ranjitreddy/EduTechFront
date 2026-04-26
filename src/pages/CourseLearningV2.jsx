@@ -7,8 +7,7 @@ import TabbedContent from '../components/TabbedContent';
 import FloatingActions from '../components/FloatingActions';
 import './CourseLearningV2.css';
 
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
+import { COURSE_URL, ENROLLMENT_URL } from '../config/api';
 
 const CourseLearningV2 = () => {
     const { id } = useParams();

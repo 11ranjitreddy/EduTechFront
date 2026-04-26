@@ -1,10 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-
+import { ENROLLMENT_URL } from '../config/api';
 const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
+
 
 // ✅ Helper to get token
 const getToken = () => {

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import './MyCourses.css';
 
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
+import { ENROLLMENT_URL } from '../config/api';
 
 const MyCourses = () => {
     const { user } = useAuth();

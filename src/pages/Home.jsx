@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import CourseCard from '../components/CourseCard';
+import { COURSE_URL } from '../config/api'; // ✅ ADDED
 import './Home.css';
 
 const Home = () => {
@@ -17,9 +18,8 @@ const Home = () => {
         { name: 'Design', icon: '🎨', color: '#f1f8e9' },
     ];
 
-    // ✅ Fetch top courses from backend
     useEffect(() => {
-        fetch('http://localhost:8082/api/v1/courses/top')
+        fetch(`${COURSE_URL}/top`) // ✅ FIXED
             .then(res => res.json())
             .then(data => setFeaturedCourses(data))
             .catch(err => console.error('Failed to load courses:', err))
@@ -28,7 +28,6 @@ const Home = () => {
 
     return (
         <div className="home-page">
-            {/* Hero Section */}
             <section className="hero-section">
                 <div className="container hero-container">
                     <div className="hero-content">
@@ -77,7 +76,6 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* Categories Section */}
             <section className="categories-section">
                 <div className="container">
                     <div className="section-header text-center">
@@ -100,7 +98,6 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* Featured Courses Section */}
             <section className="featured-section" style={{ padding: '4rem 0', background: 'var(--background)' }}>
                 <div className="container">
                     <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end' }}>
