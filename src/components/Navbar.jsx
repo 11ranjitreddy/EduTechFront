@@ -28,11 +28,11 @@ const Navbar = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setIsSearchOpen(false);
-      setSearchQuery('');
+        navigate(`/courses?search=${encodeURIComponent(searchQuery)}`);
+        setIsSearchOpen(false);
+        setSearchQuery('');
     }
-  };
+};
 
   // Close dropdown when clicking outside
   useEffect(() => {
