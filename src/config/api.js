@@ -10,5 +10,6 @@ export const LIVECLASS_URL   = `${API_URL}/api/v1/liveclasses`;
 export const ASSESSMENT_URL  = `${API_URL}/api/v1/assessments`;
 export const DISCUSSION_URL  = `${API_URL}/api/v1/discussions`;
 export const CONTACT_URL = `${API_URL}/api/v1/contacts`;
+export const RESOURCE_URL = `${API_URL}/api/v1/resources`;
 
 export default API_URL;

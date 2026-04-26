@@ -3,36 +3,24 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './AdminCurriculum.css';
 
-import { COURSE_URL, SECTION_URL, VIDEO_URL, ASSESSMENT_URL } from '../../config/api';
+import { COURSE_URL, SECTION_URL, VIDEO_URL, ASSESSMENT_URL, RESOURCE_URL } from '../../config/api';
 
-// ✅ IMPROVED: Better token retrieval with multiple fallback options
+// Improved token retrieval with multiple fallback options
 const getToken = () => {
     try {
-        // Try to get from edtech_user first
         const edtechUser = localStorage.getItem('edtech_user');
         if (edtechUser) {
             const parsed = JSON.parse(edtechUser);
-            if (parsed?.accessToken) {
-                console.log('✅ Token found in edtech_user');
-                return parsed.accessToken;
-            }
+            if (parsed?.accessToken) return parsed.accessToken;
             if (parsed?.token) return parsed.token;
         }
         
-        // Try common token keys
         const token = localStorage.getItem('token');
-        if (token) {
-            console.log('✅ Token found in token key');
-            return token;
-        }
+        if (token) return token;
         
         const accessToken = localStorage.getItem('accessToken');
-        if (accessToken) {
-            console.log('✅ Token found in accessToken key');
-            return accessToken;
-        }
+        if (accessToken) return accessToken;
         
-        console.error('❌ No token found in localStorage');
         return null;
     } catch (err) {
         console.error('Error getting token:', err);
@@ -73,9 +61,18 @@ const AdminCurriculum = () => {
     const [savingAssessment, setSavingAssessment] = useState(false);
     const [assessmentSaved, setAssessmentSaved] = useState(false);
 
+    // Resources states
+    const [resources, setResources] = useState([]);
+    const [showResourceForm, setShowResourceForm] = useState(false);
+    const [resourceForm, setResourceForm] = useState({
+        title: '', description: '', pdfUrl: ''
+    });
+    const [savingResource, setSavingResource] = useState(false);
+
     useEffect(() => {
         fetchData();
         fetchExistingAssessment();
+        fetchResources();
     }, [courseId]);
 
     const fetchData = async () => {
@@ -88,8 +85,6 @@ const AdminCurriculum = () => {
                 navigate('/login');
                 return;
             }
-
-            console.log('Fetching data with token:', token.substring(0, 50) + '...');
 
             const [courseRes, curriculumRes] = await Promise.all([
                 fetch(`${COURSE_URL}/${courseId}`, {
@@ -152,7 +147,18 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Add Section with proper token
+    // Fetch resources
+    const fetchResources = async () => {
+        try {
+            const res = await fetch(`${RESOURCE_URL}/course/${courseId}`);
+            const data = await res.json();
+            setResources(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load resources:', err);
+        }
+    };
+
+    // Add Section
     const handleAddSection = async (e) => {
         if (e?.preventDefault) e.preventDefault();
         if (!sectionTitle.trim()) return;
@@ -160,8 +166,6 @@ const AdminCurriculum = () => {
         setError(null);
 
         const token = getToken();
-        console.log('Adding section with token:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
-        
         if (!token) {
             setError('Please login to add sections');
             navigate('/login');
@@ -175,7 +179,6 @@ const AdminCurriculum = () => {
                 title: sectionTitle,
                 orderIndex: sections.length + 1
             };
-            console.log('Section request body:', requestBody);
 
             const res = await fetch(SECTION_URL, {
                 method: 'POST',
@@ -185,8 +188,6 @@ const AdminCurriculum = () => {
                 },
                 body: JSON.stringify(requestBody)
             });
-
-            console.log('Section response status:', res.status);
 
             if (res.status === 401) {
                 setError('Session expired. Please login again.');
@@ -211,7 +212,7 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Delete Section
+    // Delete Section
     const handleDeleteSection = async (sectionId) => {
         if (!window.confirm('Delete this section and all its videos?')) return;
         setError(null);
@@ -247,7 +248,7 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Add Video with proper token
+    // Add Video
     const handleAddVideo = async (e, sectionId) => {
         e.preventDefault();
         if (!videoForm.title || !videoForm.videoUrl) return;
@@ -255,8 +256,6 @@ const AdminCurriculum = () => {
         setError(null);
         
         const token = getToken();
-        console.log('Adding video with token:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
-        
         if (!token) {
             setError('Please login to add videos');
             navigate('/login');
@@ -275,7 +274,6 @@ const AdminCurriculum = () => {
                 isFree: videoForm.isFree,
                 orderIndex: (section?.videos?.length || 0) + 1
             };
-            console.log('Video request body:', requestBody);
 
             const res = await fetch(VIDEO_URL, {
                 method: 'POST',
@@ -285,8 +283,6 @@ const AdminCurriculum = () => {
                 },
                 body: JSON.stringify(requestBody)
             });
-
-            console.log('Video response status:', res.status);
 
             if (res.status === 401) {
                 setError('Session expired. Please login again.');
@@ -311,7 +307,7 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Delete Video
+    // Delete Video
     const handleDeleteVideo = async (videoId) => {
         if (!window.confirm('Delete this video?')) return;
         setError(null);
@@ -347,7 +343,93 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Extract PDF
+    // Add Resource
+    const handleAddResource = async (e) => {
+        e.preventDefault();
+        if (!resourceForm.title || !resourceForm.pdfUrl) {
+            setError('Please fill in title and PDF URL');
+            return;
+        }
+        setSavingResource(true);
+        setError(null);
+        
+        const token = getToken();
+        if (!token) {
+            setError('Please login to add resources');
+            navigate('/login');
+            setSavingResource(false);
+            return;
+        }
+
+        try {
+            const res = await fetch(RESOURCE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    courseId: parseInt(courseId),
+                    title: resourceForm.title,
+                    description: resourceForm.description,
+                    pdfUrl: resourceForm.pdfUrl
+                })
+            });
+
+            if (res.status === 401) {
+                setError('Session expired. Please login again.');
+                if (logout) logout();
+                navigate('/login');
+                return;
+            }
+
+            if (!res.ok) throw new Error('Failed to add resource');
+
+            setResourceForm({ title: '', description: '', pdfUrl: '' });
+            setShowResourceForm(false);
+            await fetchResources();
+        } catch (err) {
+            console.error('Failed to add resource:', err);
+            setError('Failed to add resource');
+        } finally {
+            setSavingResource(false);
+        }
+    };
+
+    // Delete Resource
+    const handleDeleteResource = async (id) => {
+        if (!window.confirm('Delete this resource?')) return;
+        setError(null);
+        
+        const token = getToken();
+        if (!token) {
+            setError('Please login to delete resources');
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${RESOURCE_URL}/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 401) {
+                setError('Session expired. Please login again.');
+                if (logout) logout();
+                navigate('/login');
+                return;
+            }
+
+            if (!res.ok) throw new Error('Failed to delete resource');
+            await fetchResources();
+        } catch (err) {
+            console.error('Failed to delete resource:', err);
+            setError('Failed to delete resource');
+        }
+    };
+
+    // Extract PDF
     const handleExtract = async () => {
         if (!pdfFile) {
             alert('Please select a PDF file first!');
@@ -396,7 +478,7 @@ const AdminCurriculum = () => {
         }
     };
 
-    // ✅ Save Assessment
+    // Save Assessment
     const handleSaveAssessment = async () => {
         if (!assessmentTitle.trim()) {
             alert('Please enter assessment title!');
@@ -482,27 +564,6 @@ const AdminCurriculum = () => {
         setExtractedQuestions(updated);
     };
 
-    // Debug: Log token status on component mount
-    useEffect(() => {
-        const token = getToken();
-        console.log('=== TOKEN DEBUG ===');
-        console.log('Token present:', !!token);
-        if (token) {
-            console.log('Token preview:', token.substring(0, 50) + '...');
-            console.log('Token length:', token.length);
-            // Decode token to check expiry
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                console.log('Token role:', payload.role);
-                console.log('Token expiry:', new Date(payload.exp * 1000));
-                console.log('Is expired:', payload.exp * 1000 < Date.now());
-            } catch (err) {
-                console.error('Cannot decode token:', err);
-            }
-        }
-        console.log('Full localStorage edtech_user:', localStorage.getItem('edtech_user'));
-    }, []);
-
     if (loading) return (
         <div style={{ textAlign: 'center', padding: '5rem' }}>
             Loading curriculum...
@@ -574,10 +635,14 @@ const AdminCurriculum = () => {
                         </span>
                         <span className="curr-stat-label">Questions</span>
                     </div>
+                    <div className="curr-stat">
+                        <span className="curr-stat-value">{resources.length}</span>
+                        <span className="curr-stat-label">Resources</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Tab Switch */}
+            {/* Tab Switch - Updated with Resources tab */}
             <div style={{
                 display: 'flex', gap: '0.5rem',
                 marginBottom: '1.5rem',
@@ -586,7 +651,8 @@ const AdminCurriculum = () => {
             }}>
                 {[
                     { id: 'curriculum', label: '🎬 Curriculum' },
-                    { id: 'assessment', label: '📝 Assessment' }
+                    { id: 'assessment', label: '📝 Assessment' },
+                    { id: 'resources', label: '📄 Resources' }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -616,6 +682,19 @@ const AdminCurriculum = () => {
                                 fontWeight: '700'
                             }}>
                                 ✓ Published
+                            </span>
+                        )}
+                        {tab.id === 'resources' && resources.length > 0 && (
+                            <span style={{
+                                marginLeft: '0.5rem',
+                                background: '#4F46E5',
+                                color: 'white',
+                                borderRadius: '99px',
+                                padding: '0.1rem 0.5rem',
+                                fontSize: '0.7rem',
+                                fontWeight: '700'
+                            }}>
+                                {resources.length}
                             </span>
                         )}
                     </button>
@@ -785,7 +864,6 @@ const AdminCurriculum = () => {
                         </div>
                     ))}
 
-                    {/* Section Form - OUTSIDE map */}
                     {showSectionForm && (
                         <div className="add-section-form">
                             <h4>New Section</h4>
@@ -833,10 +911,9 @@ const AdminCurriculum = () => {
                 </div>
             )}
 
-            {/* ASSESSMENT TAB - Same as before, kept for completeness */}
+            {/* ASSESSMENT TAB */}
             {activeTab === 'assessment' && (
                 <div style={{ maxWidth: '800px' }}>
-                    {/* PDF Format Guide */}
                     <div style={{
                         background: '#EEF2FF',
                         border: '1px solid #C7D2FE',
@@ -875,7 +952,6 @@ const AdminCurriculum = () => {
                         </div>
                     </div>
 
-                    {/* Assessment Settings */}
                     <div style={{
                         background: 'white',
                         border: '1px solid #E5E7EB',
@@ -932,7 +1008,6 @@ const AdminCurriculum = () => {
                         </div>
                     </div>
 
-                    {/* PDF Upload */}
                     <div style={{
                         background: 'white',
                         border: '1px solid #E5E7EB',
@@ -1005,7 +1080,6 @@ const AdminCurriculum = () => {
                         </button>
                     </div>
 
-                    {/* Questions Editor */}
                     {extractedQuestions.length > 0 && (
                         <div style={{
                             background: 'white',
@@ -1218,6 +1292,137 @@ const AdminCurriculum = () => {
                             >
                                 + Add Question Manually
                             </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* RESOURCES TAB - NEW */}
+            {activeTab === 'resources' && (
+                <div style={{
+                    background: 'white', borderRadius: '12px',
+                    padding: '1.5rem', marginTop: '0',
+                    border: '1px solid #E5E7EB'
+                }}>
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', marginBottom: '1.5rem'
+                    }}>
+                        <h3 style={{ margin: 0 }}>📄 PDF Resources</h3>
+                        <button onClick={() => setShowResourceForm(!showResourceForm)} style={{
+                            padding: '0.5rem 1rem', background: '#4F46E5',
+                            color: 'white', border: 'none', borderRadius: '8px',
+                            cursor: 'pointer', fontWeight: '600'
+                        }}>
+                            {showResourceForm ? '✕ Cancel' : '+ Add Resource'}
+                        </button>
+                    </div>
+
+                    {showResourceForm && (
+                        <form onSubmit={handleAddResource} style={{
+                            background: '#F8FAFC', borderRadius: '10px',
+                            padding: '1.25rem', marginBottom: '1.5rem',
+                            border: '2px dashed #4F46E5'
+                        }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem' }}>
+                                        Title *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Python Cheat Sheet"
+                                        value={resourceForm.title}
+                                        onChange={e => setResourceForm({ ...resourceForm, title: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '0.7rem', border: '2px solid #E5E7EB', borderRadius: '8px', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem' }}>
+                                        PDF URL *
+                                    </label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://example.com/file.pdf"
+                                        value={resourceForm.pdfUrl}
+                                        onChange={e => setResourceForm({ ...resourceForm, pdfUrl: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '0.7rem', border: '2px solid #E5E7EB', borderRadius: '8px', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem' }}>
+                                        Description
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Brief description of this resource"
+                                        value={resourceForm.description}
+                                        onChange={e => setResourceForm({ ...resourceForm, description: e.target.value })}
+                                        style={{ width: '100%', padding: '0.7rem', border: '2px solid #E5E7EB', borderRadius: '8px', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                <button 
+                                    type="submit" 
+                                    disabled={savingResource}
+                                    style={{
+                                        padding: '0.6rem 1.5rem', 
+                                        background: savingResource ? '#9CA3AF' : '#4F46E5',
+                                        color: 'white', border: 'none', borderRadius: '8px',
+                                        cursor: savingResource ? 'not-allowed' : 'pointer', 
+                                        fontWeight: '600'
+                                    }}>
+                                    {savingResource ? 'Adding...' : '📄 Add Resource'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {resources.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#9CA3AF' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📂</div>
+                            <p>No resources added yet</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {resources.map(resource => (
+                                <div key={resource.id} style={{
+                                    display: 'flex', alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '1rem', background: '#F8FAFC',
+                                    borderRadius: '8px', border: '1px solid #E5E7EB'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span style={{ fontSize: '1.5rem' }}>📄</span>
+                                        <div>
+                                            <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>
+                                                {resource.title}
+                                            </div>
+                                            {resource.description && (
+                                                <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>
+                                                    {resource.description}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <a href={resource.pdfUrl} target="_blank" rel="noreferrer" style={{
+                                            padding: '0.4rem 0.75rem', background: '#4F46E5',
+                                            color: 'white', borderRadius: '6px',
+                                            textDecoration: 'none', fontWeight: '600', fontSize: '0.8rem'
+                                        }}>
+                                            👁 View
+                                        </a>
+                                        <button onClick={() => handleDeleteResource(resource.id)} style={{
+                                            padding: '0.4rem', background: 'none',
+                                            border: 'none', cursor: 'pointer', fontSize: '1rem'
+                                        }}>🗑️</button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import './Checkout.css';
 
-const PAYMENT_URL = 'http://localhost:8082/api/v1/payments';
+import { PAYMENT_URL } from '../config/api';
 
 // ✅ SET THIS TO true WHEN CLIENT GIVES RAZORPAY KEYS
 const USE_REAL_PAYMENT = true;

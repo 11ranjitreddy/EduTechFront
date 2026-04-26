@@ -335,7 +335,7 @@ const AdminCourses = () => {
                                 </div>
                             </div>
                         </form>
-                    </div>
+                    </div>a
                 </div>
             )}
         </div>
