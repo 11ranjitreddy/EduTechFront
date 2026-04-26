@@ -4,7 +4,7 @@ import { Play, CheckCircle, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
-const BASE_URL = 'http://localhost:8082/api/v1/courses';
+import { COURSE_URL as BASE_URL } from '../config/api';
 
 const CourseDetail = () => {
     const { id } = useParams();

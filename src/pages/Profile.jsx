@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import './Profile.css';
 
-import { ENROLLMENT_URL, PAYMENT_URL, COURSE_URL } from '../config/api';
+import { ENROLLMENT_URL, PAYMENT_URL, COURSE_URL, AUTH_URL } from '../config/api';
 
 const Profile = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, setUser } = useAuth(); // Add setUser from auth context
     const { enrolledCourseIds } = useCart();
     const navigate = useNavigate();
 
@@ -20,9 +20,18 @@ const Profile = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(user?.name || '');
     const [editPhone, setEditPhone] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         fetchData();
+    }, [user]);
+
+    useEffect(() => {
+        // Update edit fields when user changes
+        if (user) {
+            setEditName(user.name || '');
+            setEditPhone(user.phone || '');
+        }
     }, [user]);
 
     const fetchData = async () => {
@@ -47,21 +56,62 @@ const Profile = () => {
 
             // ✅ Fetch course details with token
             if (Array.isArray(enrollData) && enrollData.length > 0) {
-             const courseDetails = await Promise.all(
-    enrollData.map(e =>
-        fetch(`${COURSE_URL}/${e.courseId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(r => r.ok ? r.json() : null) // ✅ return null if 500
-        .catch(() => null)                  // ✅ return null if network error
-    )
-);
-setCourses(courseDetails.filter(Boolean));
+                const courseDetails = await Promise.all(
+                    enrollData.map(e =>
+                        fetch(`${COURSE_URL}/${e.courseId}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        })
+                        .then(r => r.ok ? r.json() : null)
+                        .catch(() => null)
+                    )
+                );
+                setCourses(courseDetails.filter(Boolean));
             }
         } catch (err) {
             console.error('Failed to load profile data:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ✅ Integrated save profile function
+    const handleSaveProfile = async () => {
+        setIsSaving(true);
+        try {
+            const token = user?.accessToken;
+            const res = await fetch(`${AUTH_URL}/profile/update`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    fullName: editName,
+                    phone: editPhone
+                })
+            });
+
+            if (res.ok) {
+                const updatedUserData = await res.json();
+                // ✅ Update context and localStorage with new user data
+                const updatedUser = { 
+                    ...user, 
+                    name: updatedUserData.fullName || editName,
+                    phone: updatedUserData.phone || editPhone
+                };
+                setUser(updatedUser);
+                localStorage.setItem('edtech_user', JSON.stringify(updatedUser));
+                setIsEditing(false);
+                alert('Profile updated successfully!');
+            } else {
+                const errorData = await res.json();
+                alert(errorData.message || 'Failed to update profile');
+            }
+        } catch (err) {
+            console.error('Failed to update profile:', err);
+            alert('Network error. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -152,6 +202,7 @@ setCourses(courseDetails.filter(Boolean));
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
                                     placeholder="Your full name"
+                                    disabled={isSaving}
                                 />
                             </div>
                             <div className="edit-field">
@@ -161,6 +212,7 @@ setCourses(courseDetails.filter(Boolean));
                                     value={user?.email || ''}
                                     readOnly
                                     style={{ background: '#F9FAFB', cursor: 'not-allowed' }}
+                                    disabled={isSaving}
                                 />
                             </div>
                             <div className="edit-field">
@@ -170,6 +222,7 @@ setCourses(courseDetails.filter(Boolean));
                                     value={editPhone}
                                     onChange={(e) => setEditPhone(e.target.value)}
                                     placeholder="+91 98765 43210"
+                                    disabled={isSaving}
                                 />
                             </div>
                             <div className="edit-field">
@@ -179,6 +232,7 @@ setCourses(courseDetails.filter(Boolean));
                                     value={user?.role || 'Student'}
                                     readOnly
                                     style={{ background: '#F9FAFB', cursor: 'not-allowed' }}
+                                    disabled={isSaving}
                                 />
                             </div>
                         </div>
@@ -186,14 +240,16 @@ setCourses(courseDetails.filter(Boolean));
                             <button
                                 className="btn-cancel-edit"
                                 onClick={() => setIsEditing(false)}
+                                disabled={isSaving}
                             >
                                 Cancel
                             </button>
                             <button
                                 className="btn-save-edit"
-                                onClick={() => setIsEditing(false)}
+                                onClick={handleSaveProfile}
+                                disabled={isSaving}
                             >
-                                Save Changes
+                                {isSaving ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </div>

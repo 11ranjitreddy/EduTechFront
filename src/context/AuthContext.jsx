@@ -49,12 +49,12 @@ export const AuthProvider = ({ children }) => {
 
         // ✅ Normal login (no MFA)
         const userData = {
-            email,
-            role: result.role,
-            accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
-            name: email.split('@')[0]
-        };
+    email,
+    role: result.role,
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    name: result.name || email.split('@')[0]  // ✅ use backend name
+};
 
         setUser(userData);
         setIsAuthenticated(true);
@@ -93,12 +93,12 @@ export const AuthProvider = ({ children }) => {
         const result = data.data;
 
         const userData = {
-            email,
-            role: result.role,   // ✅ role from backend
-            accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
-            name: email.split('@')[0]
-        };
+    email,
+    role: result.role,
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    name: result.name || email.split('@')[0]  // ✅ use backend name
+};
 
         setUser(userData);
         setIsAuthenticated(true);
@@ -120,6 +120,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider
             value={{
                 user,
+                setUser,
                 isAuthenticated,
                 login,
                 setupMfa,
