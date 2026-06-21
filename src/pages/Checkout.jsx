@@ -57,7 +57,7 @@ const Checkout = () => {
 
             // ✅ Enroll with token
             for (const course of cart) {
-                await fetch('http://localhost:8082/api/v1/enrollments', {
+                await fetch(`${API_URL}/api/v1/enrollments`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

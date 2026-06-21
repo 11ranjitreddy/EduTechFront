@@ -3,8 +3,9 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import { Eye, EyeOff } from 'lucide-react';
 import './Auth.css';
+import API_URL from '../config/api';
 
-const BASE_URL = 'http://localhost:8081/api/v1/auth';
+const BASE_URL = `${API_URL}/api/v1/auth`;
 
 const ResetPassword = () => {
     const [searchParams] = useSearchParams();

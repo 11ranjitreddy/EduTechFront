@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Certificate.css';
+import API_URL from '../config/api';
 
-const COURSE_URL = 'http://localhost:8082/api/v1/courses';
-const ENROLLMENT_URL = 'http://localhost:8082/api/v1/enrollments';
+const COURSE_URL = `${API_URL}/api/v1/courses`;
+const ENROLLMENT_URL = `${API_URL}/api/v1/enrollments`;
 
 const Certificate = () => {
     const { courseId } = useParams();
