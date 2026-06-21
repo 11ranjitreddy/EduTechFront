@@ -12,4 +12,7 @@ export const DISCUSSION_URL  = `${API_URL}/api/v1/discussions`;
 export const CONTACT_URL = `${API_URL}/api/v1/contacts`;
 export const RESOURCE_URL = `${API_URL}/api/v1/resources`;
 
+console.log("VITE_API_URL =", import.meta.env.VITE_API_URL);
+console.log("API_URL =", API_URL);
+
 export default API_URL;
